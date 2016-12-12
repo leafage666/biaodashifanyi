@@ -1,0 +1,1240 @@
+#include <iostream>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+using namespace std;
+
+class Stack
+{
+private:
+    typedef struct StackNode//栈的节点
+    {
+        char data;//用来存放运算符数据
+        int number;//用来存放数字
+        struct StackNode *next;
+    } StackNode;
+    typedef struct StackLink//栈的头结点，用来存放栈的长度
+    {
+        StackNode *top;//指向栈顶
+        int count;//统计栈的元素个数
+    } StackLink;
+public:
+    StackLink SL;
+    Stack()//初始化操作
+    {
+        CreateLink(SL);//创建一个空的链栈
+    }
+
+    void CreateLink(StackLink &SL)//初始化链栈
+    {
+        SL.count = 0;
+        SL.top = NULL;
+    }
+
+    void pushElem(char ch)  //运算符入栈
+    {
+        StackNode* Q;//新的节点
+        Q = (StackNode*)malloc(sizeof(StackNode));
+        Q->data = ch;
+        Q->next = SL.top;//让新的节点指向栈顶
+        SL.top = Q;//指向栈顶
+        SL.count++;
+    }
+
+    void pushElem(int number)//用于入栈数字
+    {
+        StackNode* Q;//新的节点
+        Q = (StackNode*)malloc(sizeof(StackNode));
+        Q->number = number;
+        Q->next = SL.top;//让新的节点指向栈顶
+        SL.top = Q;//指向栈顶
+        SL.count++;
+    }
+
+    int popElemNumber()//出栈栈顶数值并返回
+    {
+        int num;
+        StackNode* Q;
+        Q = SL.top;//记录栈顶元素
+        num = Q->number;
+        SL.top = SL.top->next;//指向栈顶的下一个元素
+        free(Q);//释放节点s
+        SL.count--;
+        return num;
+    }
+
+    void popElem()  //出栈
+    {
+        StackNode* Q;
+        Q = SL.top;//记录栈顶元素
+        SL.top = SL.top->next;//指向栈顶的下一个元素
+        free(Q);//释放节点s
+        SL.count--;
+    }
+
+    void destroyStack()//清空栈
+    {
+        while(SL.count != 0)
+        {
+            StackNode* Q;
+            Q = SL.top;//记录栈顶元素
+            SL.top = SL.top->next;//指向栈顶的下一个元素
+            free(Q);//释放节点s
+            SL.count--;
+        }
+    }
+};
+
+class Expression//关系运算
+{
+private:
+    string Z1;//用来存入中缀表达式
+    char H2[100];//用来存入输入的后缀表达式
+    char H3[100];//用来后缀计算数值
+    char Z2[100];//用来保存后缀转中缀后的表达式
+    char H1[100];//用来保存中缀转后缀表达式
+    int zLength;//用来计算中缀表达式的长度
+    int hLength;//用来计算后缀表达式的
+    int houLength;//用来求数值的时候用的
+    int number;//用来保存数值
+    int zCount;//用来对中缀表达式进行处理
+    int hCount;//用来对后缀表达式进行处理
+    int houCount;//用来对后缀表达式进行部分处理
+    Stack S1;//链栈,用来处理中缀转后缀
+    Stack S2;//处理后缀计算数值
+public:
+    Expression()//部分初始化操作
+    {
+        Z1 = '\0';
+        H2[0] = '\0';
+        H3[0] = '\0';
+        Z2[0] = '\0';
+        H1[0] = '\0';
+    }
+    void setZ1()//输入中缀表达式
+    {
+        cout << "\n\n\n请输入中缀表达式：";
+        cin >> Z1;
+        ZLength();
+    }
+    void ZLength()//计算中缀表达式长度
+    {
+        zLength = 0;
+        int i = 0;
+        while(Z1[i] != '\0')
+        {
+            zLength++;
+            i++;
+        }
+    }
+    int zToH()  //中缀转化为后缀
+    {
+        if(!checkBracket())
+        {
+            cout << "\n\n\n输入错误，括号不匹配！";
+            return 0;
+        }
+        if(!checkOthers())
+        {
+            cout << "\n\n\n输入错误！";
+            return 0;
+        }
+        zCount = 0;
+        hCount = 0;
+        char topCh;
+        char nowCh;
+        while(zCount < zLength)
+        {
+            //判断这个是数字还是运算符
+            if(judgeNumOrAri(Z1[zCount]))  //如果是数字
+            {
+                H1[hCount] = Z1[zCount];//将数字存入到后缀字符中
+                hCount++;//后缀下标+1
+                nextChar(zCount,hCount);//判断这个数字的下一位是不是数字,直到遇到符号结束
+                H1[hCount] = ' ';//用空格分隔开数字
+                hCount++;
+            }
+            else    //如果是运算符
+            {
+                if(S1.SL.count == 0)//此时为空栈
+                {
+                    S1.pushElem(Z1[zCount]);//将运算符入栈
+                }
+                else//不为空栈的话需要判断此时的运算符与栈顶元素的运算符优先级,以及出栈的操作
+                {
+                    topCh = S1.SL.top->data;//取得此时栈顶元素的运算符
+                    nowCh = Z1[zCount];//取得此时中缀表达式中的运算符
+                    if(nowCh=='(')//如果是左括号的话，直接压栈
+                    {
+                        S1.pushElem(Z1[zCount]);
+                    }
+                    else//如果是其他符号的话，需要进行比较了
+                    {
+                        if(nowCh==')')//如果是右括号
+                        {
+                            while(topCh!='(' && S1.SL.count!=0)//如果栈顶符号不是左括号或者空，一直出栈
+                            {
+                                H1[hCount] = topCh;//将栈顶元素 赋值给后缀表达式
+                                hCount++;
+                                H1[hCount] = ' ';//用空格分隔开数字
+                                hCount++;
+                                S1.popElem();//栈顶元素出栈
+                                if(S1.SL.top != NULL)
+                                {
+                                    topCh = S1.SL.top->data;
+                                }
+                            }
+                            if(topCh == '(')//在将此时的（出栈
+                            {
+                                S1.popElem();
+                            }
+                        }
+                        else//如果是+-*/!&|><,需要进行比较优先级
+                        {
+                            if(nowCh == '!')//优先级最高直接入栈,
+                            {
+                                S1.pushElem(nowCh);
+                            }
+                            if(nowCh=='*' || nowCh=='/')//如果此时是*/，优先级较高，判断此时栈顶是不是！，是的话，！出栈，不是的话，直接入栈
+                            {
+                                if(topCh == '!')
+                                {
+                                    while(topCh!='(' && S1.SL.count!=0)//如果栈顶符号不是左括号或者空，一直出栈
+                                    {
+                                        H1[hCount] = topCh;//将栈顶元素 赋值给后缀表达式
+                                        hCount++;
+                                        H1[hCount] = ' ';//用空格分隔开数字
+                                        hCount++;
+                                        S1.popElem();//栈顶元素出栈
+                                        if(S1.SL.top != NULL)//判断一下此时是不是空栈,不空的话得到站定元素
+                                        {
+                                            topCh = S1.SL.top->data;
+                                        }
+                                    }
+                                    if(topCh == '(')//在将此时的（出栈
+                                    {
+                                        S1.popElem();
+                                    }
+                                    S1.pushElem(nowCh);//再将新的符号入栈
+                                }
+                                else
+                                {
+                                    S1.pushElem(nowCh);
+                                }
+                            }
+                            if(nowCh=='+' || nowCh=='-')//如果此时是+-，优先级较低，需要与栈顶元素比较
+                            {
+                                if(topCh=='*' || topCh=='/' || topCh=='!')//如果此时栈顶时*/!，需要将栈中出栈，然后在入栈
+                                {
+                                    while(topCh!='(' && S1.SL.count!=0)//如果栈顶符号不是左括号或者空，一直出栈
+                                    {
+                                        H1[hCount] = topCh;//将栈顶元素 赋值给后缀表达式
+                                        hCount++;
+                                        H1[hCount] = ' ';//用空格分隔开数字
+                                        hCount++;
+                                        S1.popElem();//栈顶元素出栈
+                                        if(S1.SL.top != NULL)//判断一下此时是不是空栈,不空的话得到站定元素
+                                        {
+                                            topCh = S1.SL.top->data;
+                                        }
+                                    }
+                                    if(topCh == '(')//在将此时的（出栈
+                                    {
+                                        S1.popElem();
+                                    }
+                                    S1.pushElem(nowCh);//再将新的符号入栈
+                                }
+                                else
+                                {
+                                    S1.pushElem(nowCh);
+                                }
+                            }
+                            if(nowCh=='>' || nowCh=='<' || nowCh=='=')//如果此时是<>，优先级较低，需要与栈顶元素比较
+                            {
+                                if(topCh=='*' || topCh=='/' || topCh=='!' || topCh=='+' || topCh=='-')//如果此时栈顶时*/!，需要将栈中出栈，然后在入栈
+                                {
+                                    while(topCh!='(' && S1.SL.count!=0)//如果栈顶符号不是左括号或者空，一直出栈
+                                    {
+                                        H1[hCount] = topCh;//将栈顶元素 赋值给后缀表达式
+                                        hCount++;
+                                        H1[hCount] = ' ';//用空格分隔开数字
+                                        hCount++;
+                                        S1.popElem();//栈顶元素出栈
+                                        if(S1.SL.top != NULL)//判断一下此时是不是空栈,不空的话得到站定元素
+                                        {
+                                            topCh = S1.SL.top->data;
+                                        }
+                                    }
+                                    if(topCh == '(')//在将此时的（出栈
+                                    {
+                                        S1.popElem();
+                                    }
+                                    S1.pushElem(nowCh);//再将新的符号入栈
+                                }
+                                else
+                                {
+                                    S1.pushElem(nowCh);
+                                }
+                            }
+                            if(nowCh=='|' || nowCh=='&')//如果此时是+-，优先级较低，需要与栈顶元素比较
+                            {
+                                if(topCh=='*' || topCh=='/' || topCh=='!' || topCh=='+' || topCh=='-' || topCh=='>' || topCh=='<' || topCh=='=')//如果此时栈顶时*/!，需要将栈中出栈，然后在入栈
+                                {
+                                    while(topCh!='(' && S1.SL.count!=0)//如果栈顶符号不是左括号或者空，一直出栈
+                                    {
+                                        H1[hCount] = topCh;//将栈顶元素 赋值给后缀表达式
+                                        hCount++;
+                                        H1[hCount] = ' ';//用空格分隔开数字
+                                        hCount++;
+                                        S1.popElem();//栈顶元素出栈
+                                        if(S1.SL.top != NULL)//判断一下此时是不是空栈,不空的话得到站定元素
+                                        {
+                                            topCh = S1.SL.top->data;
+                                        }
+                                    }
+                                    if(topCh == '(')//在将此时的（出栈
+                                    {
+                                        S1.popElem();
+                                    }
+                                    S1.pushElem(nowCh);//再将新的符号入栈
+                                }
+                                else
+                                {
+                                    S1.pushElem(nowCh);
+                                }
+                            }
+                        }
+                    }
+                }
+                zCount++;
+            }
+        }
+
+        if(S1.SL.count != 0)//如果此时栈中还有元素的话，全部出栈
+        {
+            hCount--;//退去一个空格
+            topCh = S1.SL.top->data;//取得此时栈顶元素的运算符
+            while(topCh!='(' && S1.SL.count!=0)
+            {
+                H1[hCount] = topCh;//将栈顶元素 赋值给后缀表达式
+                hCount++;
+                H1[hCount] = ' ';//用空格分隔开数字
+                hCount++;
+                S1.popElem();//栈顶元素出栈
+                if(S1.SL.top != NULL)
+                {
+                    topCh = S1.SL.top->data;
+                }
+            }
+        }
+        return 1;
+    }
+    int checkBracket()//检查括号是否配对
+    {
+        int rightBracket = 0;
+        int leftBracket = 0;
+        int i=0;
+        while(i < zLength)
+        {
+            if(Z1[i] == '(')
+            {
+                leftBracket++;
+
+            }
+            if(Z1[i] == ')')
+            {
+                rightBracket++;
+            }
+            i++;
+        }
+        if(rightBracket == leftBracket)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    int checkOthers()//检查一下数字和运算符之间的合法性
+    {
+        int numberCount = 0;
+        int operatorCount = 0;
+        int index;
+        int i=0;
+        while(i < zLength)
+        {
+            if(Z1[i] == '+' || Z1[i] == '-' || Z1[i]=='=' || Z1[i] == '*' || Z1[i] == '/' || Z1[i] == '!' || Z1[i] == '>' || Z1[i] == '<' || Z1[i] == '|' || Z1[i] == '&')
+            {
+                operatorCount++;
+                index = i;
+            }
+            else
+            {
+                if(Z1[i]!='(' && Z1[i]!=')')
+                {
+                    numberCount++;
+                }
+            }
+            i++;
+        }
+
+        if(numberCount >= operatorCount && numberCount!=0 && operatorCount!=0)
+        {
+            if(numberCount==0 || operatorCount==0)
+            {
+                return 0;
+            }
+            if(operatorCount==1&&Z1[index]!='!')//如果只有一个运算符的话，只能是!
+            {
+                return 0;
+            }
+            else
+            {
+                if(operatorCount!=1)//多个运算符
+                {
+                    return 1;
+                }
+                if(Z1[index]=='!'&&index==0)//检查一下此时是不是单目运算符  类似 ！1这种类型的
+                {
+                    return 1;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    int judgeNumOrAri(char ch)  //用来判断字符是数字还是表达式
+    {
+        if(ch=='+' || ch=='-' || ch=='*' || ch=='=' || ch=='/' || ch=='(' || ch==')' || ch=='!' || ch=='|' || ch=='&' || ch=='>' || ch=='<')
+        {
+            return 0;
+        }
+        else
+        {
+            return 1;
+        }
+    }
+    void nextChar(int &zCount,int &hCount)//对当前数字的下一个进行判断，直到这个数值运算完成
+    {
+        while(zCount < zLength)  //设置循环，直到这个数字全部计算完成
+        {
+            zCount++;//下一位
+            if(Z1[zCount]=='&' || Z1[zCount]=='|' || Z1[zCount]=='=' || Z1[zCount]=='<' || Z1[zCount]=='>' || Z1[zCount]=='!' || Z1[zCount]=='+' || Z1[zCount]=='-' || Z1[zCount]=='*' || Z1[zCount]=='/' || Z1[zCount]=='(' || Z1[zCount]==')')//如果是表达式的话就结束循环，并返回这个数字
+            {
+                break;
+            }
+            else//如果不是表达式的话，直接写入后缀表达式中
+            {
+                H1[hCount] = Z1[zCount];
+                hCount++;
+            }
+        }
+    }
+    void printH()//输出后缀表达式
+    {
+        cout << "\n\n\n后缀表达式为：";
+        int i=0;
+        while(i < hCount)
+        {
+            cout << H1[i];
+            i++;
+        }
+        S1.destroyStack();//清空栈，防止输出入错误时栈中残留元素
+    }
+
+    void runZtoH()//对整体的调用控制
+    {
+        setZ1();//设置中缀表达式
+        if(zToH())//转换
+        {
+            printH();//输出后缀表达式
+        }
+    }
+//--------------------------------------------------------
+    void setHou()//输入后缀表达式
+    {
+        cout << "\n\n\n\n请输入后缀表达式：";
+        getchar();
+        gets(H3);
+        HLength1();
+    }
+
+    void HLength1()//计算后缀表达式长度
+    {
+        houLength = 0;
+        int i = 0;
+
+        while(H3[i] != '\0')
+        {
+            houLength++;
+            i++;
+        }
+    }
+
+    int checkOthers2()//检查一下数字和运算符之间的合法性
+    {
+        int numberCount = 0;
+        int operatorCount = 0;
+        int i=0;
+        while(i < houLength)
+        {
+            if(H3[i] == '+' || H3[i] == '-' || H3[i] == '*' || H3[i] == '/' || H3[i] == '!' || H3[i] == '>' || H3[i] == '<' || H3[i]=='=' || H3[i] == '|' || H3[i] == '&')
+            {
+                operatorCount++;
+            }
+            else
+            {
+                if(H3[i]!='(' && H3[i]!=')')
+                {
+                    numberCount++;
+                }
+            }
+            i++;
+        }
+
+        if(numberCount >= operatorCount && numberCount!=0 && operatorCount!=0)
+        {
+            if(numberCount==0 || operatorCount==0)
+            {
+                return 0;
+            }
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    int hToNumber()//后缀表达式转换成数值
+    {
+        if(!checkOthers2())
+        {
+            cout << "\n\n\n输入的表达式错误！";
+            return 0;
+        }
+        char nowCh;//得到此时的字符
+        houCount = 0;//用来移动表达式下标
+        int firstNumber;
+        int secodeNumber;
+        int sum;
+        while(houCount < houLength)
+        {
+            if(H3[houCount] != ' ')//不是空格的话进行处理
+            {
+                if(judgeNumOrAri(H3[houCount]))//如果是数字的话，直接入栈
+                {
+                    sum = 0;//初始化总数值
+                    sum = allTheNumber(houCount);
+                    S2.pushElem(sum);//对数字进行入栈
+                }
+                else//如果是运算符，需要将栈顶的两个元素取出来进行计算，然后将计算结果进行入栈
+                {
+                    sum = 0;
+                    firstNumber = S2.popElemNumber();//得到栈顶的第一个元素
+                    //得到栈顶的第二个元素
+                    if(S2.SL.count != 0)
+                    {
+                        secodeNumber = S2.popElemNumber();//Deidao di erge
+                    }
+                    switch(H3[houCount])//对数值进行运算,第二个 + - * / 第一个元素
+                    {
+                    case '+':
+                        sum = secodeNumber + firstNumber;
+                        break;
+                    case '-':
+                        sum = secodeNumber - firstNumber;
+                        break;
+                    case '*':
+                        sum = secodeNumber * firstNumber;
+                        break;
+                    case '/':
+                        sum = secodeNumber / firstNumber;
+                        break;
+                    case '!':
+                        if(firstNumber==0)
+                        {
+                            sum = 1;
+                        }
+                        else
+                        {
+                            sum = 0;
+                        }
+                        break;
+                    case '>':
+                        if(secodeNumber > firstNumber)
+                        {
+                            sum = 1;
+                        }
+                        else
+                        {
+                            sum = 0;
+                        }
+                        break;
+                    case '<':
+                        if(secodeNumber < firstNumber)
+                        {
+                            sum = 1;
+                        }
+                        else
+                        {
+                            sum = 0;
+                        }
+                        break;
+                    case '=':
+                        if(secodeNumber == firstNumber)
+                        {
+                            sum = 1;
+                        }
+                        else
+                        {
+                            sum = 0;
+                        }
+                        break;
+                    case '|':
+                        if(secodeNumber || firstNumber)
+                        {
+                            sum = 1;
+                        }
+                        else
+                        {
+                            sum = 0;
+                        }
+                        break;
+                    case '&':
+                        if(secodeNumber&&firstNumber)
+                        {
+                            sum = 1;
+                        }
+                        else
+                        {
+                            sum = 0;
+                        }
+                        break;
+                    default:
+                        cout << "表达式错误！";
+                        return 0;
+                        break;
+                    }
+                    S2.pushElem(sum);//将数值在入栈
+                }
+            }
+            houCount++;
+        }
+        return 1;
+    }
+
+    void printNumber()//输出最后计算得到的数值
+    {
+        if(S2.SL.count == 1)
+        {
+            cout << "\n\n\n计算的数值为：" <<  S2.popElemNumber();
+        }
+        else//否则可能出现错误
+        {
+            cout << "表达式错误！";
+            S2.destroyStack();//销毁链表
+        }
+    }
+
+    int allTheNumber(int hou)//找出这整个数字
+    {
+        int Count = 0;//用来统计这是几位数字
+        int sum = 0;
+        while(H3[hou] != ' ')//计算这是个几位数字
+        {
+            Count++;
+            hou++;
+        }
+        int temp = houCount + Count;
+        while(houCount < temp)//计算这个数字
+        {
+            sum = sum + ((H3[houCount]-48)*fun(Count));
+            houCount++;
+            Count--;//需要间1  用来下次计算
+        }
+        //cout << "这个数字是：" << sum;
+        return sum;
+    }
+    int fun(int i)//计算需要乘以多少
+    {
+        int a = 1;
+        while(i != 0)
+        {
+            a *= 10;
+            i--;
+        }
+        a /= 10;//循环会多乘一次
+        return a;
+    }
+
+    void runHouToNumber()//对整体的调用控制
+    {
+        setHou();
+        if(hToNumber())
+        {
+            printNumber();
+        }
+    }
+//--------------------------------------------------------
+    void setH()//输入后缀表达式
+    {
+        cout << "\n\n\n\n请输入后缀表达式：";
+        getchar();
+        gets(H2);//直接输入string 截取不到空格
+        HLength();
+    }
+    void HLength()//计算后缀表达式长度，不包括空格
+    {
+        hLength = 0;
+        int i = 0;
+
+        while(H2[i] != '\0')
+        {
+            hLength++;
+            i++;
+        }
+    }
+
+    int hToZ()//后缀转中缀
+    {
+        zCount = 0;
+        hCount = 0;
+        char topCh;
+        char nowCh;
+        char nextCh;
+        int temp;
+        int flags = 0;//标记是否需要加括号
+        int bracketFlags = 0;
+        int spaceCount=0;//用来统计空格的数量，补充运算符
+        while(hCount < hLength)
+        {
+            if(!checkOthers1())
+            {
+                cout << "\n\n\n输入的表达式有误！";
+                return 0;
+            }
+            if(H2[hCount] != ' ')
+            {
+                if(judgeNumOrAri(H2[hCount]))  //如果是数字
+                {
+                    Z2[zCount] = H2[hCount];//直接写入中缀表达式
+                    zCount++;
+                    nextChar1(hCount,zCount);//判断下一个是不是数字
+                    Z2[zCount] = ' ';//加入空格，用于后面补充运算符
+                    zCount++;
+                    spaceCount++;//计算中缀表达式中的空格，值只可能是1 2
+                    //cout << "数字：此时的空格为：" << spaceCount << " ";
+                }
+                else//运算符
+                {
+                    flags = 0;
+                    bracketFlags = 0;
+                    nowCh = H2[hCount];//得到此时的符号
+                    //低级运算符中间相隔一个数字然后是高级运算符 ，需要加括号
+                    if(nowCh=='+' || nowCh=='-' || nowCh=='*' || nowCh=='/' || nowCh=='=' || nowCh=='>' || nowCh=='<' || nowCh=='|' || nowCh=='&')//只有中间隔着一个数字然后再是运算符的才需要加括号，中间隔着两个数字的不需要加括号,只有+-才需要加
+                    {
+                        //+ ? *  这种形式的需要加括号
+                        //此时的运算符与下一个运算符如果中间只有一个数字的话，应该只有两个空格
+                        temp = hCount+1;//得到此时的运算符下一个的位置
+                        int sCount = 0;//用来计算与下一个运算符之间隔着多少个空格
+                        while(H2[temp] != '\0')
+                        {
+                            if(H2[temp] == ' ')//如果是空格的话
+                            {
+                                sCount++;
+                            }
+                            if(H2[temp]=='+' || H2[temp]=='-' || H2[temp]=='*' || H2[temp]=='/' || H2[temp]=='!' || H2[temp]=='=' || H2[temp]=='>' || H2[temp]=='<' || H2[temp]=='|' || H2[temp]=='&')//遇到运算符结束
+                            {
+                                break;
+                            }
+                            temp++;
+                        }
+                        if(sCount == 2)//如果此时liang个运算符之间只有两个空格，那么判断下一个字符是不是高于当前优先级，将下一个字符赋值即可
+                        {
+                            //cout << "需要加括号";
+                            if((nowCh=='*'||nowCh=='/')&&(H2[temp]=='!'))
+                            {
+                                flags = 1;
+                            }
+                            if((nowCh=='+'||nowCh=='-')&&(H2[temp]=='!'||H2[temp]=='*'||H2[temp]=='/'))
+                            {
+                                flags = 1;
+                            }
+                            if((nowCh=='>'||nowCh=='<'||nowCh=='=')&&(H2[temp]=='!'||H2[temp]=='*'||H2[temp]=='/'||H2[temp]=='+'||H2[temp]=='-'))
+                            {
+                                flags = 1;
+                            }
+                            if((nowCh=='|'||nowCh=='&')&&(H2[temp]=='!'||H2[temp]=='*'||H2[temp]=='/'||H2[temp]=='+'||H2[temp]=='-'||H2[temp]=='>'||H2[temp]=='<'||H2[temp]=='='))
+                            {
+                                flags = 1;
+                            }
+                        }
+                        else//否则不需要加空格，不给下一个字符赋值
+                        {
+
+                            flags = 0;
+                        }
+                    }
+                    //再次检查，如果相隔运算符优先级更高的话，也需要加括号 + *,并且此时这种情况下只能正常加括号，不用测试左右是不是有括号
+                    if(flags == 0)//如果等于空的话，再次检查相隔的运算符是不是,这个是括号前面有别的表达式时候需要考虑的情况
+                    {
+                        // +/ 这种形式的也需要加括号
+                        temp = hCount+2;//找到下一个字符
+                        if(nowCh=='*' || nowCh=='/')
+                        {
+                            if(H2[temp]=='!')
+                            {
+                                //nextCh = H2[temp];
+                                flags = 1;
+                                bracketFlags = 1;
+                            }
+                        }
+                        if(nowCh=='+' || nowCh=='-')
+                        {
+                            if(H2[temp]=='*' || H2[temp]=='/' || H2[temp]=='!')
+                            {
+                                //nextCh = H2[temp];
+                                flags = 1;
+                                bracketFlags = 1;
+                            }
+                        }
+                        if(nowCh=='<' || nowCh=='>' || nowCh=='=')
+                        {
+                            if(H2[temp]=='*' || H2[temp]=='/' || H2[temp]=='*' || H2[temp]=='/' || H2[temp]=='!')
+                            {
+                                //nextCh = H2[temp];
+                                flags = 1;
+                                bracketFlags = 1;
+                            }
+                        }
+                        if(nowCh=='|' || nowCh=='&')
+                        {
+                            if(H2[temp]=='*' || H2[temp]=='/' || H2[temp]=='*' || H2[temp]=='/' || H2[temp]=='!' || H2[temp]=='<' || H2[temp]=='>' || H2[temp]=='=')
+                            {
+                                //nextCh = H2[temp];
+                                flags = 1;
+                                bracketFlags = 1;
+                            }
+                        }
+                    }
+                    if(flags == 0)//再次检查是不是 + ? ? +(更高级) 这种情况下只能正常加括号
+                    {
+                        temp = hCount+6;
+                        if((nowCh=='*'||nowCh=='/')&&(H2[temp]=='!'||H2[temp]=='*'||H2[temp]=='/'))
+                        {
+                            flags = 1;
+                            bracketFlags = 1;
+                        }
+                        if((nowCh=='+'||nowCh=='-')&&(H2[temp]=='*'||H2[temp]=='/'||H2[temp]=='!'||H2[temp]=='+'||H2[temp]=='-'))
+                        {
+                            flags = 1;
+                            bracketFlags = 1;
+                        }
+                        if((nowCh=='<'||nowCh=='>'||nowCh=='=')&&(H2[temp]=='*'||H2[temp]=='/'||H2[temp]=='!'||H2[temp]=='+'||H2[temp]=='-'||H2[temp]=='<'||H2[temp]=='>'||H2[temp]=='='))
+                        {
+                            flags = 1;
+                            bracketFlags = 1;
+                        }
+                        if((nowCh=='|'||nowCh=='&')&&(H2[temp]=='*'||H2[temp]=='/'||H2[temp]=='!'||H2[temp]=='+'||H2[temp]=='-'||H2[temp]=='<'||H2[temp]=='>'||H2[temp]=='='||H2[temp]=='|'||H2[temp]=='&'))
+                        {
+                            flags = 1;
+                            bracketFlags = 1;
+                        }
+                    }
+                    /*if(spaceCount == 3)//数字中间的空格不可能超过两个，特殊原因超过两个之后-1
+                    {
+                        spaceCount--;
+                    }*/
+                    if(nowCh == '!')//如果等于的话，说明此时的运算符是!,此时直接在左边的空格后加上！,没有空格的话，直接在最左边加上
+                    {
+                        int i;
+                        //cout << "此时Zcount数值：" << zCount << "添加!之前为：";
+                        //printZ();
+                        //cout << endl;
+                        for(i=zCount-2; i>=0; i--)
+                        {
+                            if(Z2[i] == ' ')
+                            {
+                                //cout << "此时空格位置：" << i << " ";
+                                break;//如果找到空格的话，结束循环
+                            }
+                        }
+                        for(int j=zCount; j>i; j--)
+                        {
+                            Z2[j] = Z2[j-1];
+                        }
+                        if(i == 0)//如果等于0的话
+                        {
+                            Z2[i] = '!';
+                        }
+                        else//在下一个位置上加上！，把之前的空格留下来
+                        {
+                            Z2[i+1] = '!';
+                        }
+                        //zCount++;
+                        //cout << "加完!为";
+                        //printZ();
+                        //cout << endl;
+                    }
+                    else
+                    {
+                        //当空格数大于3个的时候从后往前插入
+                        if((spaceCount-1)%2==1 && nowCh!='!' && (spaceCount-1)<=2)//此时是单个空格，也就是两个数字或倍数,从前往后插入运算符
+                        {
+                            if(flags == 1)//如果此时的运算符是+-
+                            {
+                                insertOperatpr(nowCh,1,1,bracketFlags);//需要加括号
+                                spaceCount--;
+                            }
+                            else//否则的话不需要加括号
+                            {
+                                insertOperatpr(nowCh,1,0,0);//不需要加括号
+                                spaceCount--;
+                            }
+
+                        }
+                        else
+                        {
+                            if(((spaceCount-1)%2==0 && spaceCount!=0) || (spaceCount-1)>2 && nowCh!='!')//两个空格，需要从后往前插入运算符
+                            {
+                                if(flags == 1)//如果此时的运算符是+-
+                                {
+                                    insertOperatpr(nowCh,2,1,bracketFlags);//需要加括号
+                                    spaceCount--;
+                                }
+                                else//否则的话不需要加括号
+                                {
+                                    insertOperatpr(nowCh,2,0,0);//不需要加括号
+                                    spaceCount--;
+                                }
+
+                            }
+                        }
+                    }
+                    //cout << "运算符：此时的空格为：" << spaceCount << " ";
+                }
+            }
+            hCount++;
+        }
+        return 1;
+    }
+
+    void insertOperatpr(char ch,int how,int bracket,int bracketFlags)//从前或者从后遍历找到空格插入运算符
+    {
+        int i;
+        if(how == 1)//从前往后插入，遇到空格插入即可
+        {
+            //cout << "此时zCount的数值为：" << zCount;
+            for(i=0; i<zCount; i++)
+            {
+                if(Z2[i] == ' ')
+                {
+                    Z2[i] = ch;
+                    if(bracket == 1)//需要加括号
+                    {
+                        addBracket(i,bracketFlags);//传入此时的运算符位置
+                        break;
+                    }
+                    break;
+                }
+            }
+        }
+        if(how == 2)//从后往前插入，
+        {
+            //cout << "此时zCount的数值为：" << zCount;
+            for(i=zCount-2; i>=0; i--) //需要退出多余的地方
+            {
+                if(Z2[i] == ' ')
+                {
+                    Z2[i] = ch;
+                    if(bracket == 1)//需要加括号
+                    {
+                        addBracket(i,bracketFlags);//传入此时的运算符位置
+                        break;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    int leftBracket(int index)//判断左边是否有成对的括号
+    {
+        int lCount = 0;
+        int lIndex;
+        int rCount = 0;
+        while(index != -1)
+        {
+            if(Z2[index] == '(')
+            {
+
+                lCount++;
+                lIndex = index;//记录此时左边括号的下标
+            }
+            if(Z2[index] == ')')
+            {
+                rCount++;
+            }
+            index--;
+        }
+        if(lCount==rCount && lCount!=0)//有成对的括号
+        {
+            return lIndex;
+        }
+        return -1;
+    }
+    int rightBracket(int index)//判断右边是否有成对的括号
+    {
+        int lCount = 0;
+        int rIndex;
+        int rCount = 0;
+        while(index != zCount)
+        {
+            if(Z2[index] == '(')
+            {
+                lCount++;
+            }
+            if(Z2[index] == ')')
+            {
+                rCount++;
+                rIndex = index;//记录此时左边括号的下标
+            }
+            index++;
+        }
+        if(lCount==rCount && lCount!=0)//有成对的括号
+        {
+            return rIndex;
+        }
+        return -1;
+    }
+    void addBracket(int index,int bracketFlags)//以传入运算符位置为基点，向左右分别添加括号
+    {
+        int leftIndex;//找到左边加括号的位置
+        int rightIndex;//找到右边加括号的位置
+        int lIndex = index-1;//用来移动
+        int rIndex = index+2;
+        //给左边加括号,需要判断左边有没有成对的括号
+        int addl = leftBracket(index);//add如果不是-1的话，就是最左边的括号的下标
+
+        if(addl!=-1&&bracketFlags!=1)//判断左边有没有成对的括号,如果有的话，在左边括号的左边加上一个括号
+        {
+            if(addl == 0)//如果是边界的话
+            {
+                for(int i=zCount; i>0; i--)
+                {
+                    Z2[i] = Z2[i-1];
+                }
+                Z2[0] = '(';
+                zCount++;
+            }
+            else//不是边界的话,需要从左边括号开始算起，遇到运算符，然后加括号
+            {
+                while(Z2[addl]!='+' && Z2[addl]!='-' || Z2[addl]!='*' || Z2[addl]!='/' || Z2[addl]!='!' || Z2[addl]!='<' ||Z2[addl]!='>' || Z2[addl]!='|' || Z2[addl]!='&' || Z2[addl]!='(' || Z2[addl]!=')')
+                {
+                    addl--;
+                }
+                addl = addl + 1;
+                for(int i=zCount+1; i>addl; i--)
+                {
+                    Z2[i] = Z2[i-1];
+                }
+                Z2[addl] = '(';
+                zCount++;
+            }
+
+        }
+        else//左边没有成对的括号的话正常加上括号即可
+        {
+            while(Z2[lIndex]!='+' && Z2[lIndex]!='-' && Z2[lIndex]!='*' && Z2[lIndex]!='/' && Z2[lIndex]!=' ' && Z2[lIndex]!='!' && Z2[lIndex]!='<' && Z2[lIndex]!='>' && Z2[lIndex]!='(' && Z2[lIndex]!=')' && lIndex!=-1)//直到找到左边的运算符
+            {
+                lIndex--;
+            }
+            leftIndex = lIndex+1;//得到需要加括号的坐标
+            for(int i=zCount+1; i>lIndex; i--) //向后移动一位
+            {
+                Z2[i] = Z2[i-1];
+            }
+            Z2[leftIndex] = '(';
+            zCount++;
+
+        }
+        //cout << "此时运算符的下表为：" << index;
+        //cout << "此时加括号(的下标为：" << leftIndex;
+        //cout << "加完括号为";
+        //printZ();
+        //cout << endl;
+
+        int addr = rightBracket(index);
+        if(addr!=-1&&bracketFlags!=1)//右边有成对括号
+        {
+            if(addr == zCount)//bianjie右边界直接加
+            {
+                Z2[addr] = ')';
+                zCount++;
+            }
+            else//不是边界
+            {
+                while(Z2[addr]!='+' && Z2[addr]!='-' || Z2[addr]!='*' || Z2[addr]!='/' || Z2[addr]!='!' || Z2[addr]!='<' ||Z2[addr]!='>' || Z2[addr]!='|' || Z2[addr]!='&' || Z2[addr]!=' ' || Z2[addr]!='(' || Z2[addr]!=')')
+                {
+                    addr++;
+                }
+                //addl = addl + 1;
+                for(int i=zCount+1; i>addr; i--)
+                {
+                    Z2[i] = Z2[i-1];
+                }
+                Z2[addr] = ')';
+                zCount++;
+            }
+        }
+        else//正常加括号
+        {
+            while(Z2[rIndex]!='+' && Z2[rIndex]!='-' && Z2[rIndex]!='*'  && Z2[rIndex]!='/' && Z2[rIndex]!='!' && Z2[rIndex]!='<' && Z2[rIndex]!='>' && Z2[rIndex]!='(' && Z2[rIndex]!=')' && Z2[rIndex]!=' ' && rIndex!=zCount)//直到找到左边的运算符
+            {
+                rIndex++;
+            }
+            rightIndex = rIndex;//得到括号的坐标
+            for(int i=zCount+1; i>rIndex; i--)
+            {
+                Z2[i] = Z2[i-1];
+            }
+            Z2[rIndex] = ')';
+            zCount++;
+
+        }
+        //cout << "此时运算符的下表为：" << index;
+        //cout << "此时加括号)的下标为：" << rightIndex;
+        //cout << "加完括号为";
+        //printZ();
+        //cout << endl;
+    }
+    void nextChar1(int &hCount,int &zCount)//对当前数字的下一个进行判断，直到这个数值运算完成
+    {
+        while(hCount < hLength)  //设置循环，直到这个数字全部计算完成
+        {
+
+            hCount++;//下一位
+            if(H2[hCount]=='+' || H2[hCount]=='-' || H2[hCount]=='*' || H2[hCount]=='/' || H2[hCount]==' ')//如果是表达式的话就结束循环，并返回这个数字
+            {
+                hCount--;//退回去，否则hCount会加两次
+                break;
+            }
+            else//如果不是表达式的话，直接写入zhong缀表达式中
+            {
+                Z2[zCount] = H2[hCount];
+                zCount++;
+            }
+        }
+    }
+
+    int checkOthers1()//检查一下数字和运算符之间的合法性
+    {
+        int numberCount = 0;
+        int operatorCount = 0;
+        int i=0;
+        while(i < hLength)
+        {
+            if(H2[i] == '+' || H2[i] == '-' || H2[i] == '*' || H2[i] == '/' || H2[i] == '!' || H2[i] == '<' || H2[i] == '>' ||H2[i]=='=' || H2[i] == '|' || H2[i] == '&')
+            {
+                operatorCount++;
+            }
+            else
+            {
+                if(H2[i]!='(' && H2[i]!=')')
+                {
+                    numberCount++;
+                }
+            }
+            i++;
+        }
+        if(numberCount > operatorCount && numberCount!=0 && operatorCount!=0)
+        {
+            if(numberCount==0 || operatorCount==0)
+            {
+                return 0;
+            }
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    void printZ()//输出中缀表达式
+    {
+        cout << "\n\n\n中缀表达式为：";
+        int i=0;
+        while(i < zCount)
+        {
+            cout << Z2[i];
+            i++;
+        }
+        S2.destroyStack();//清空栈，防止输出入错误时栈中残留元素
+    }
+    void runHtoZ()//对整体的调用控制
+    {
+        setH();
+        if(hToZ())
+        {
+            printZ();
+        }
+    }
+
+};
+
+void showMenu()//菜单
+{
+    cout << "\n\n\t\t\t\t表达式翻译\n\n";
+    cout << "\n\n\t\t\t1.中缀表达式转后缀表达式。";
+    cout << "\n\n\t\t\t2.后缀表达式转中缀表达式。";
+    cout << "\n\n\t\t\t3.输入后缀表达式计算数值。";
+    cout << "\n\n\t\t\t4.退出程序。";
+    cout << "\n\n\n\n\n\t\t\t\t";
+    cout << "我的选择:";
+}
+int main()
+{
+    Expression r;
+    int menu;//用于选择菜单
+    while(1)
+    {
+        showMenu();
+        cin >> menu;
+        switch(menu)
+        {
+        case 1:
+            system("cls");
+            r.runZtoH();
+            cout << "\n\n\n\n";
+            system("pause");
+            break;
+        case 2:
+            system("cls");
+            r.runHtoZ();
+            cout << "\n\n\n\n";
+            system("pause");
+            break;
+        case 3:
+            system("cls");
+            r.runHouToNumber();
+            cout << "\n\n\n\n";
+            system("pause");
+            break;
+        case 4:
+            exit(0);
+            break;
+        default:
+            break;
+        }
+        system("cls");
+    }
+    return 0;
+}
